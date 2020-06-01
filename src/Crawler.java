@@ -1,97 +1,75 @@
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.net.MalformedURLException;
-import java.net.Socket;
-import java.net.URL;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
+import java.net.*;
+import java.util.*;
+import java.io.*;
 
 public class Crawler {
-    public static final String URL_PREFIX = "https://";
-    int max_depth = 1;
 
-    Crawler(String host) throws IOException {
-        Socket soc = new Socket(host, 80);
-        URLDepthPair hm = new URLDepthPair("https://" + host + "/");
-        String host1 = host;
-        LinkedList<URLDepthPair> viewed_url = new LinkedList<>();
-        LinkedList<URLDepthPair> not_viewed_url = new LinkedList<>();
-        not_viewed_url.add(hm);
-        soc.setSoTimeout(2000);
-        while ((!not_viewed_url.isEmpty())) {
-            try {
-                URL url = new URL(not_viewed_url.getFirst().getUrl());
-                try {
-                    LineNumberReader reader = new LineNumberReader(new InputStreamReader(url.openStream()));
-                    String string = reader.readLine();
-                    while (string != null) {
-                        for (String reta  : string.split("href=\""))
-                            try {
-                                if (string.contains("href=\"" + URL_PREFIX) & reta.startsWith(URL_PREFIX)) {
-                                    hm = new URLDepthPair((reta.substring(0, reta.indexOf("\"")).split("/").length - 3), reta.substring(0, reta.indexOf("\"")));
-                                    if (hm.getDepth()<=max_depth & hm.getUrl().contains(host1)) {
-                                        int sizea = not_viewed_url.size();
-                                        int sizeb = viewed_url.size();
-                                        boolean aState=false;
-                                        boolean bState=false;
-                                        int i=0;
-                                        int j=0;
-                                        while ((!aState & i<sizea)|(!bState & i<sizeb)){
-                                            if (i<sizea) {
-                                                if (not_viewed_url.get(i).getUrl().contains(hm.getUrl())) {
-                                                    aState = true;
-                                                }
-                                                i++;
-                                            }
-                                            if (j<sizeb){
-                                                if (viewed_url.get(j).getUrl().contains(hm.getUrl())) {
-                                                    bState = true;
-                                                }
-                                                j++;
-                                            }
-                                        }
-                                        if (!aState & !bState) {
-                                            not_viewed_url.add(hm);
-                                        }
-                                    }
-                                }
-                            } catch (StringIndexOutOfBoundsException e) {
-                            }
-
-                        string = reader.readLine();
+    public static final String URL_PREFIX="https://"; //константа, содержащая префикс ссылки
+    public static void main(String[] args) {
+        new Crawler(new String[]{"https://www.nytimes.com/","1"});
+    }
+    Crawler(String[] args){
+        int max_depth = Integer.parseInt(args[1]); //максимальная глубина
+        LinkedList<URLDepthPair> checked = new LinkedList<URLDepthPair>(); //список с просмотренными ссылками
+        LinkedList<URLDepthPair> unchecked = new LinkedList<URLDepthPair>(); //список с непросмотренными ссылками
+        URLDepthPair first = new URLDepthPair(args[0], 0); //создаем объект класса, с глубиной 0
+        unchecked.add(first); //добавляем в список непросмотренных ссылок
+        int j=0;
+        while (unchecked.size() != 0) {   //цикл выполнятеся пока лист unchecked не пуст
+            URLDepthPair depthPair = unchecked.pop(); //извлекается элемент из стека, представленного списком unchecked
+            System.out.println("Проверяется ссылка:" + '\t' + depthPair.getURL() + '\n'+
+                    "Ссылок проверено:" + '\t' + ++j);
+            checked.add(depthPair); //добавляем в список проверенных ссылок
+            int url_depth = depthPair.getDepth();
+            LinkedList<String> linksList = new LinkedList<String>();
+            try{
+                linksList = getAllLinks(depthPair);
+            } catch (IOException e){ }
+            if (url_depth < max_depth) {
+                for (int i=0;i<linksList.size();i++) {
+                    String newURL = linksList.get(i);
+                    if (!(unchecked.contains(new URLDepthPair(newURL, 0)) | checked.contains(new URLDepthPair(newURL, 0)))){
+                        unchecked.add(new URLDepthPair(newURL, newURL.split("/").length-3));
                     }
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
-
-            } catch (MalformedURLException ex) {
-                ex.printStackTrace();
             }
-            soc.close();
-            viewed_url.add(not_viewed_url.getFirst());
-            not_viewed_url.removeFirst();
-            System.out.println("Проверенная cсылка: " + viewed_url.getLast().getUrl());
-            System.out.println("Ссылок проверено: " + viewed_url.size());
         }
-        viewed_url.sort(new Comparator<URLDepthPair>() {
-            @Override
-            public int compare(URLDepthPair o1, URLDepthPair o2) {
-                return o1.getUrl().compareTo(o2.getUrl());
+
+        int i=0;
+        for (URLDepthPair linksList : checked) System.out.println(++i + ": " + linksList.getURL() + " [" + linksList.getDepth() + "]");
+    }
+
+    public static LinkedList<String> getAllLinks(URLDepthPair myDepthPair) throws IOException {
+        LinkedList<String> URLs = new LinkedList<String>();
+        Socket sock = new Socket(myDepthPair.getWebHost(), 80);
+        sock.setSoTimeout(3000); //время ожидания сокета
+        PrintWriter myWriter = new PrintWriter(sock.getOutputStream(), true);
+        myWriter.println("GET " + myDepthPair.getDocPath() + " HTTP/1.1");
+        myWriter.println("Host: " + myDepthPair.getWebHost());
+        myWriter.println("Connection: close");
+        myWriter.println();
+        BufferedReader BuffReader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+        String line;
+        while (true) {
+            line=BuffReader.readLine();
+            if (line==null){ break; }
+            for (String reta : line.split("href=\"")) {
+                if (line.contains("a href=\"") & (reta.startsWith(URL_PREFIX))){
+                    try {
+                        String Link = (reta.substring(0, reta.indexOf("\"")));
+                        URLs.add(Link);
+                    }catch (IndexOutOfBoundsException e){
+                        System.err.println(e);
+                        break;
+                    }
+                }
             }
-        });
-        Set<URLDepthPair> list = new HashSet<URLDepthPair>(viewed_url);
-        viewed_url.clear();
-        viewed_url.addAll(list);
-        System.out.println(viewed_url);
+        }
+        sock.close();
+        BuffReader.close();
+        return URLs;
+
     }
 
-    public static void main(String args[]) throws Exception {
-        new Crawler("nytimes.com");
-    }
 }
-
 

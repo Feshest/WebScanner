@@ -1,24 +1,58 @@
+import java.net.*;
+import java.util.Objects;
+
+
 public class URLDepthPair {
-    String url;
-    int depth;
 
-    URLDepthPair(int depth,String url){
-       this.depth = depth;
-       this.url = url;
-    }
-    URLDepthPair(String url){
-        this.url =url;
-        this.depth = 0;
+    private int depth;
+    private String URL;
+
+    public URLDepthPair(String URL, int depth) {
+        this.depth = depth;
+        this.URL = URL;
     }
 
-    public int getDepth() {
-        return depth;
+    public String getURLS(){    //getter возвращающий ссылку
+        return URL;
     }
 
-    public String getUrl() {
-        return url;
+    public String getURL(){
+        return URL;
     }
-    public String toString(){
-        return(url + " "+ depth);
+
+
+    public int getDepth() { return depth; } //getter возвращающий глубину ссылки
+
+    public String toString() {
+        return ("|    "+getDepth() + "    |"+" "+getURLS());
+
+    }
+
+    public String getDocPath() {
+        try {
+            return new URL(URL).getPath(); //Возвращает путь к url адресу
+        } catch (MalformedURLException e) {
+            return null;
+        }
+    }
+    public String getWebHost() {      //возвращает имя хоста URL в формате IPv6
+        try {
+            return new URL(URL).getHost();
+        } catch (MalformedURLException e) {
+            return null;
+        }
+    }
+    @Override
+    public boolean equals(Object obj) {   //переопределение метода equals
+        if (obj instanceof URLDepthPair) {
+            URLDepthPair o = (URLDepthPair)obj;
+            return this.URL.equals(o.getURLS());
+        }
+        return false;
+    }
+
+    @Override                                          //переопределение метода hashCode
+    public int hashCode() {
+        return Objects.hash();
     }
 }
