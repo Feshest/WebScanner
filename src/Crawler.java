@@ -17,11 +17,6 @@ public class Crawler {
     }
 
     public static final String URL_PREFIX = "https://";
-
-    /* Сканер (Crawler) - это класс, который
-перемещается по веб-страницам и ищет URL-адреса, поэтому класс сканера
-включает в себя код, который фактически открывает и закрывает
-сокеты */
     Crawler(String host, int depthMax) throws IOException {
         // Socket (String host, int port) создает новый сокет из полученной строки с
         // именем хоста и из целого числа с номером порта, и устанавливает соединение
